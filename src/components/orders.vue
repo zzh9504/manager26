@@ -25,29 +25,16 @@
         </div>
       </el-col>
     </el-row>
-    <!-- 分类数据 -->
+    <!-- 用户数据 -->
     <el-row>
       <el-col :span="24">
-        <el-table :data="categoryList" style="width: 100%" border>
-          <!-- 树形table -->
-          <el-tree-grid
-            prop="cat_name"
-            label="分类名称"
-            treeKey="cat_id"
-            parentKey="cat_pid"
-            levelKey="cat_level"
-            childKey="children"
-            :indentSize="30"
-          ></el-tree-grid>
-          <el-table-column prop="cat_level" label="级别" width="100">
-            <template slot-scope="prop">
-              <span v-if="prop.row.cat_level===0">一级</span>
-              <span v-if="prop.row.cat_level===1">二级</span>
-              <span v-if="prop.row.cat_level===2">三级</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop label="是否有效" width="100">
-            <template slot-scope="prop">{{prop.row.cat_deleted?'有效':'无效'}}</template>
+        <el-table :data="goodsList" style="width: 100%" border>
+          <el-table-column label="#" width="40" type="index"></el-table-column>
+          <el-table-column prop="goods_name" label="商品名称" width="500"></el-table-column>
+          <el-table-column prop="goods_price" label="商品价格" width="100"></el-table-column>
+          <el-table-column prop="goods_weight" label="商品重量" width="100"></el-table-column>
+          <el-table-column prop="add_time" label="创建时间" width="250">
+            <template slot-scope="prop">{{prop.row.add_time | beautifyTime}}</template>
           </el-table-column>
           <el-table-column label="操作">
             <template slot-scope="scope">
@@ -75,21 +62,14 @@
   </div>
 </template>
 <script>
-// 导入
-import ElTreeGrid from "element-tree-grid";
-// Vue.component(ElTreeGrid.name,ElTreeGrid);
 export default {
   name: "goods",
-  // 注册组件
-  components: {
-    ElTreeGrid
-  },
   data() {
     return {
       level2: "商品管理",
-      level3: "商品分类",
+      level3: "商品列表",
       pageData: {
-        type: 3,
+        query: "",
         // 页码
         pagenum: 1,
         // 页容量
@@ -97,22 +77,22 @@ export default {
       },
       // 总页数
       total: 0,
-      // 分类的数据
-      categoryList: []
+      // 用户的数据
+      goodsList: []
     };
   },
   // 事件
   methods: {
     // 获取分页数据的方法
-    async getCategories() {
+    async getGoods() {
       // 从上往下执行代码
-      let res = await this.$axios.get("categories", {
+      let res = await this.$axios.get("goods", {
         params: this.pageData
       });
       // 赋值
-      console.log(res);
+      // console.log(res);
       this.total = res.data.data.total;
-      this.categoryList = res.data.data.result;
+      this.goodsList = res.data.data.goods;
     },
     // 页码改变
     currentChange(pagenum) {
@@ -120,7 +100,7 @@ export default {
       // 修改页码
       this.pageData.pagenum = pagenum;
       // 重新获取数据即可
-      this.getCategories();
+      this.getGoods();
     },
     // 页容量改变
     sizeChange(pagesize) {
@@ -130,17 +110,18 @@ export default {
       // 重置页码
       this.pageData.pagenum = 1;
       // 获取数据
-      this.getCategories();
+      this.getGoods();
     }
   },
   // 生命周期函数 回调函数
   async created() {
     // 直接调用方法
-    this.getCategories();
+    this.getGoods();
   }
 };
 </script>
 <style lang="scss" scoped>
 .user-container {
+  // background-color: #af676b;
 }
 </style>
