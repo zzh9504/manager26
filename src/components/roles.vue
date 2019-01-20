@@ -28,7 +28,7 @@
               <!-- 生成 最左边的一级菜单 -->
               <el-row v-for="item in props.row.children" :key="item.id">
                 <el-col :span="4">
-                  <el-tag closable>{{item.authName}}</el-tag>
+                  <el-tag @close="delCurrentTag(props.row,item)" closable>{{item.authName}}</el-tag>
                   <!-- 小箭头 -->
                   <i class="el-icon-arrow-right"></i>
                 </el-col>
@@ -36,13 +36,18 @@
                   <!-- 二级菜单 需要单独占一行 用row嵌套即可 -->
                   <el-row v-for="level2  in item.children" :key="level2.id">
                     <el-col :span="4">
-                      <el-tag closable type="success">{{level2.authName}}</el-tag>
+                      <el-tag
+                        @close="delCurrentTag(props.row,level2)"
+                        closable
+                        type="success"
+                      >{{level2.authName}}</el-tag>
                       <!-- 小箭头 -->
                       <i class="el-icon-arrow-right"></i>
                     </el-col>
                     <!-- 三级菜单 跟二级是平齐的 -->
                     <el-col :span="20">
                       <el-tag
+                        @close="delCurrentTag(props.row,level3)"
                         v-for="level3  in level2.children"
                         :key="level3.id"
                         closable
@@ -144,21 +149,23 @@
             :data="totalRoles"
             show-checkbox
             node-key="id"
-            :default-expanded-keys="[2, 3]"
-            :default-checked-keys="[5]"
+            :default-checked-keys="checkedKeys"
             :props="defaultProps"
+            default-expand-all
+            ref="tree"
           ></el-tree>
         </el-col>
       </el-row>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="editVistable = false">取 消</el-button>
-        <el-button type="primary" @click="submitEdit('editForm')">确 定</el-button>
+        <el-button @click="roleVistable = false">取 消</el-button>
+        <el-button type="primary" @click="submitRoles">确 定</el-button>
       </div>
     </el-dialog>
   </div>
 </template>
 <script>
 export default {
+  name: "roles",
   data() {
     return {
       level2: "权限管理",
@@ -184,6 +191,10 @@ export default {
       defaultProps: {
         label: "authName"
       },
+      // 默认选中的字段
+      checkedKeys: [],
+      // 为了共享数据
+      selectRole: {},
       // 表单验证规则
       rules: {
         roleName: [
@@ -285,13 +296,77 @@ export default {
     },
     // 显示权限框
     async showRolesDialog(data) {
+      // 保存 正在编辑权限的角色
+      this.selectRole = data;
       // 显示框
       this.roleVistable = true;
       // 获取所有权限列表
       let res = await this.$axios.get("rights/tree");
-      // 保存数据到data中
+      // 保存数据到data中 总的权限列表
       this.totalRoles = res.data.data;
+      // 获取 选中的那些选项
+      this.checkedKeys = [];
+      // 遍历 获取所有的 权限id
+      // 使用递归的方式获取 所有后代节点
+      let findChild = father => {
+        // 找后代
+        if (father.children) {
+          console.log("有儿子");
+          father.children.forEach(v => {
+            // this.checkedKeys.push(v.id);
+            // 每一个儿子 有可能有后代
+            findChild(v);
+          });
+        } else {
+          // 没有后代
+          console.log("没有后代啦");
+          // 因为tree这个组件的问题 如果父id 设置被选中 会默认选中它的所有子节点
+          // 只需要添加最底层的即可
+          this.checkedKeys.push(father.id);
+        }
+      };
+      // 调用函数
+      findChild(data);
+
+      console.log(this.checkedKeys);
+
       console.log(res);
+    },
+    // 提交 权限分配
+    async submitRoles() {
+      // 获取选中的权限
+      // console.log(this.$refs.tree.getCheckedKeys());
+      // console.log(this.$refs.tree.getHalfCheckedKeys());
+      // 选中的key
+      let checkedKeys = this.$refs.tree.getCheckedKeys();
+      // 半选中的key 子项自选中了部分 但是父节点的id也要获取
+      let halfCheckedKeys = this.$refs.tree.getHalfCheckedKeys();
+      // 两个数组 -> id1,id2,id3 的字符串
+      let totalKeys = checkedKeys.concat(halfCheckedKeys);
+      // console.log(totalKeys);
+      let rids = totalKeys.join(",");
+      // console.log(rids);
+      // 调用接口 修改权限
+      let res = await this.$axios.post(`roles/${this.selectRole.id}/rights`, {
+        rids
+      });
+      console.log(res);
+      // 隐藏 权限框(tree)
+      this.roleVistable = false;
+      // 重新获取角色数据即可
+      this.getRoles();
+    },
+    // 删除角色的指定权限
+    async delCurrentTag(role, right) {
+      // console.log(role);
+      // console.log(right);
+      let res = await this.$axios.delete(`roles/${role.id}/rights/${right.id}`);
+      // console.log(res);
+      // 全部重新获取 会折叠起来 用户体验不好
+      // this.getRoles();
+
+      // 可以直接 把服务器返回的新权限  赋值给当前角色
+      role.children = res.data.data;
     }
   },
   // 生命周期函数
@@ -301,9 +376,9 @@ export default {
 };
 </script>
 <style lang="scss" scoped>
-.user-container {
-  // background-color: #af676b;
-}
+// .user-container {
+//   background-color: #af676b;`
+// }
 
 .el-tag {
   margin: 10px;
