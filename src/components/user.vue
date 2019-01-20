@@ -59,7 +59,14 @@
                 @click="delOne(scope.row)"
                 icon="el-icon-delete"
               ></el-button>
-              <el-button type="warning" plain size="mini" icon="el-icon-check"></el-button>
+              <!-- 角色按钮 -->
+              <el-button
+                type="warning"
+                @click="showRoleDialog(scope.row)"
+                plain
+                size="mini"
+                icon="el-icon-check"
+              ></el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -116,6 +123,21 @@
         <el-button type="primary" @click="submitEdit('editForm',)">确 定</el-button>
       </div>
     </el-dialog>
+    <!-- 对话框 角色框 -->
+    <el-dialog title="分配角色" :visible.sync="roleVisible">
+      <el-form label-position="left" label-width="100px" ref="editForm">
+        <el-form-item label="当前用户">{{selectUser.username}}</el-form-item>
+        <el-form-item label="请选择角色">
+          <el-select v-model="selectUser.role_name" placeholder="请选择">
+            <el-option v-for="item in roles" :key="item.id" :label="item.roleName" :value="item.id"></el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="roleVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitRole">确 定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script>
@@ -165,7 +187,13 @@ export default {
         username: "",
         email: "",
         mobile: ""
-      }
+      },
+      // 角色框是否显示
+      roleVisible: false,
+      // 当前选中的用户数据
+      selectUser: {},
+      // 所有的角色数据
+      roles: []
     };
   },
   methods: {
@@ -256,12 +284,37 @@ export default {
         this.editForm
       );
       // console.log(res);
-      if(res.data.meta.status===200){
+      if (res.data.meta.status === 200) {
         // 关闭编辑框
         this.editVisible = false;
         // 重新获取数据即可
         this.getUsers();
       }
+    },
+    // 显示角色对话框
+    async showRoleDialog(data) {
+      // 显示对话框
+      this.roleVisible = true;
+      console.log(data);
+      // 为了方便编码 直接保存当前选择的用户数据
+      this.selectUser = data;
+      // 通过data 获取 用户的名字 用户的权限
+      // 获取所有的权限
+      let res = await this.$axios.get("roles");
+      this.roles = res.data.data;
+      // console.log(res);
+    },
+    // 分配角色
+    async submitRole() {
+      // 获取 用户id 获取 角色id
+      // 调用接口
+      let res = await this.$axios.put(`users/${this.selectUser.id}/role`, {
+        rid: this.selectUser.role_name
+      });
+      // 关闭 对话框
+      this.roleVisible = false;
+      // console.log(res);
+      // 提示用户 axios拦截器搞定
     }
   },
   // 生命周期函数 回调函数
@@ -273,6 +326,6 @@ export default {
 </script>
 <style lang="scss" scoped>
 .user-container {
-  // background-color: #af676b;
+  background-color: #af676b;
 }
 </style>
